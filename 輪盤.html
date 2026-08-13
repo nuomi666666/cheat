@@ -1,286 +1,359 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="cjk " dir="">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, user-scalable=0, initial-scale=1, viewport-fit=cover" />
-<title>隨機抽籤輪盤</title>
-
-<!-- 直接引入原網站的 CSS，確保字體、配色與排版 100% 相同 -->
+<!-- 載入官方 CSS，確保基礎視覺一致 -->
 <link rel="stylesheet" type="text/css" href="https://assets.piliapp.com/v3/3dnt2_3d9e0.css" crossorigin/>
-
 <style>
-    body {
-        background-color: #fdfdfd;
-        overflow-x: hidden;
-    }
+.bi-home { background:url(https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.6.1/icons/house-door-fill.svg); }
+.bi-x { background:url(https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.6.1/icons/x-circle-fill.svg); }
 
-    /* 將輪盤置中，模擬全螢幕效果 */
-    .wheel-container {
-        position: relative;
-        width: 480px;
-        height: 480px;
-        margin: 30px auto;
-    }
+/* 轉盤本體 */
+#wheel { width: 100%; height: auto; transform-origin: center center; display: block; }
+#wheel-pin {
+    position: absolute; right: -15px; top: 50%; transform: translateY(-50%);
+    width: 0; height: 0; border-top: 15px solid transparent;
+    border-bottom: 15px solid transparent; border-right: 25px solid #e53e3e;
+    z-index: 10;
+}
+#pls-click {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(60, 60, 60, 0.85); color: white; padding: 12px 60px;
+    border-radius: 30px; font-size: 1.5rem; z-index: 15; pointer-events: none;
+}
 
-    /* 隱藏原生多餘的區塊與側邊欄 */
-    #adsbar, #bottom-ads, #sidebar, #desc, .footer {
-        display: none !important;
-    }
+/* 針對右側清單的刪除線樣式 */
+.names div.strike {
+    text-decoration: line-through;
+    color: #a0a0a0;
+}
 
-    canvas {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        transition: transform 4s cubic-bezier(0.1, 0.7, 0.1, 1);
-        cursor: pointer;
-    }
+/* 假廣告樣式 */
+.fake-ad { background-color: #2b3137; color: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative;}
+.fake-ad h3 { font-size: 1.5rem; font-weight: bold; }
+.fake-ad p { font-size: 0.8rem; color: #ccc; margin-top: 10px;}
+.fake-ad-2 { background-color: #e6f2f5; color: #333; border-radius: 8px; padding: 20px; }
+.fake-ad-2 h3 { font-size: 1.4rem; font-weight: bold; }
 
-    /* 右側紅色指針 */
-    .pointer {
-        position: absolute;
-        right: -25px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 0;
-        height: 0;
-        border-top: 15px solid transparent;
-        border-bottom: 15px solid transparent;
-        border-right: 30px solid #dc3545;
-        z-index: 15;
-    }
-
-    /* 標題與結果彈出視窗容器 */
-    .title-wrapper {
-        position: relative;
-        text-align: center;
-        margin-top: 35px;
-        height: 50px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .title-wrapper h1 {
-        font-size: 36px;
-        font-weight: normal;
-        color: #212529;
-        margin: 0;
-    }
-
-    /* 彈出視窗：設定為絕對定位並填滿父層高度以完全遮擋標題 */
-    #result-popup {
-        position: absolute;
-        background-color: #fce8b3;
-        width: 450px;
-        height: 55px; /* 稍微大於標題字體以確保完全覆蓋 */
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 15px;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        z-index: 20;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s;
-    }
-
-    #result-popup.show {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    #result-text {
-        font-size: 24px;
-        font-weight: bold;
-        color: #333;
-    }
-
-    .popup-btn {
-        background: white;
-        border: 1px solid #aaa;
-        color: #333;
-        padding: 2px 10px;
-        font-size: 14px;
-        font-weight: bold;
-        cursor: pointer;
-        border-radius: 3px;
-    }
-
-    .popup-btn:hover {
-        background: #eee;
-    }
+/* 修正橫幅按鈕對齊：X 在左，S 在右，完美貼合原版 */
+#banner button {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    border: none; background: white; color: black;
+    font-size: 1rem; font-weight: bold; border-radius: 3px;
+    padding: 2px 10px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+#hide-result { right: 10px; } /* S 按鈕固定在右邊 */
+#close-banner { left: 10px; } /* X 按鈕固定在左邊 */
 </style>
+
+<title>隨機抽籤輪盤</title>
+<link rel="shortcut icon" href="https://assets.piliapp.com/s3pxy/random/wheel/favicon.ico" />
 </head>
 <body>
-
-<!-- 100% 還原的頂部黑框導覽列 -->
-<div class="container-fluid px-0">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="breadcrumb">
-        <div class="collapse navbar-collapse px-3">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item active"><a class="nav-link active" href="#">輪盤</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">骰子</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">隨機數字</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">硬幣</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">隨機排序</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">抽籤</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">計時器</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">時鐘</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">計分板</a></li>
-                <li class="nav-item"><a class="nav-link" href="#">擲筊</a></li>
-            </ul>
-        </div>
-    </nav>
+<div class="container">
+    <div class="row no-gutters"><div class="col-12 g-0">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="breadcrumb">
+    <a class="navbar-brand d-none d-lg-inline-block" href="#"><i class="bi-home"></i>
+		<span id="piliapp-home-text">首頁</span>
+    </a>
+<button class="navbar-toggler" type="button" aria-expanded="false" aria-label="Toggle navigation">
+<span class="navbar-toggler-icon"></span>
+</button>
+<div class="collapse navbar-collapse" id="navbar">
+        <ul class="navbar-nav mr-auto">
+<li class="nav-item active"><a class="nav-link active" href="#">輪盤</a></li>
+<li class="nav-item"><a class="nav-link" href="#">骰子</a></li>
+<li class="nav-item"><a class="nav-link" href="#">隨機數字</a></li>
+<li class="nav-item"><a class="nav-link" href="#">硬幣</a></li>
+<li class="nav-item"><a class="nav-link" href="#">隨機排序</a></li>
+<li class="nav-item"><a class="nav-link" href="#">抽籤</a></li>
+<li class="nav-item"><a class="nav-link" href="#">計時器</a></li>
+<li class="nav-item"><a class="nav-link" href="#">時鐘</a></li>
+<li class="nav-item"><a class="nav-link" href="#">計分板</a></li>
+<li class="nav-item"><a class="nav-link" href="#">擲筊</a></li>
+        </ul>
+		<span id="screen-btn" class="btn btn-sm btn-outline float-right navbar-text d-none">
+			全螢幕 <u></u> <i class="bi-x"></i>
+		</span>
+    </div>
+        <a id="live-btn" class="live-btn navbar-text btn btn-sm btn-outline float-right fs-hide" href="#"><i></i>直播</a>
+</nav>
+    </div></div>
 </div>
 
-<!-- 標題與遮擋用的彈窗 -->
-<div class="title-wrapper">
-    <h1>隨機抽籤輪盤</h1>
-    <div id="result-popup">
-        <button class="popup-btn" id="close-btn">x</button>
-        <span id="result-text"></span>
-        <button class="popup-btn" id="hide-btn">s</button>
+<div class="container">
+<div class="row no-gutters">
+<div id="adsbar" class="col-12 col-xl-3">
+    <!-- 左側假廣告 -->
+    <div style="margin-top: 30px;">
+        <div style="text-align:right; font-size: 0.7rem; color: #999;">ⓘ 中華工商研究院</div>
+        <div class="fake-ad">
+            <h3>主管訓練專業課<br>程-<br>進修最佳選擇</h3>
+            <p>管理核心能力及營運戰略培訓，傳授各種工具方法及要訣，內容豐富多元，快速提升職場專業與團隊戰力</p>
+            <div style="position: absolute; right: 20px; bottom: 20px; width: 35px; height: 35px; background: white; color: black; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">></div>
+        </div>
+        <div class="fake-ad-2">
+            <h3>展現內在創意</h3>
+            <button style="background: #007bff; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; border:none; margin-top:10px; font-weight:bold;">立即試用</button>
+            <div style="margin-top:30px; font-weight:bold; color:red; font-size:1.2rem;">Adobe<br><span style="color:#333; font-size:0.9rem;">Creative Cloud</span></div>
+        </div>
+    </div>
+</div>
+</div>
+ 
+<div id="piliapp" class="row">
+    <div class="col-12"><div class="row">
+    <div id="header" class="col-12 text-center pt-3 pb-3 col-xl-6 offset-xl-3">
+        <h1 id="main-title">隨機抽籤輪盤</h1>
+        <!-- 開獎方框 (Banner) 加上相對定位以利內部按鈕絕對定位 -->
+        <div class="h1" id="banner" style="display:none; position:relative;">
+            <button id="close-banner">X</button>
+            <span id="banner-text">_</span>
+            <button id="hide-result" title="隱藏選取的項目">S</button>
+        </div>
+    </div>
+    
+    <div class="d-none align-items-center col-xl-3 d-xl-flex">
+        <div class="mx-auto">
+            <input type="button" class="spin-btn btn btn-primary btn-lg" value="開始" />
+            <input type="button" class="reset-btn btn btn-danger btn-sm" value="重設" title="顯示所有隱藏項目" />
+        </div>
+    </div>
+    </div></div>
+
+    <div class="col-12"><div class="row">
+    <div class="col-12 col-xl-6 offset-xl-3" id="results">
+        <div id="wheel-wrapper">
+            <div id="pls-click">按一下以旋轉</div>
+            <canvas id="wheel" width="600" height="600"></canvas>
+            <span id="wheel-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; background: white; border-radius: 50%; z-index: 5; box-shadow: 0 0 5px rgba(0,0,0,0.4);"></span>
+            <span id="wheel-pin"></span>
+        </div>
+
+        <div class="d-block d-lg-none controls text-center mt-3">
+            <div>
+                <input type="button" class="spin-btn btn btn-primary btn-lg" value="開始" />
+                <input type="button" class="reset-btn btn btn-danger btn-sm" value="重設" title="顯示所有隱藏項目" />
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 mt-3 mt-xl-0 flex-column col-xl-3 d-flex" id="sidebar">
+        <!-- 右側數字清單 -->
+        <div id="names-show" class="names" style="overflow-y: auto; height: 380px; text-align: left; background: white; padding: 10px; border: 1px solid #ccc; line-height: 1.2;"></div>
+        
+        <div id="edit-bar" style="visibility: visible; margin-top: 5px;">
+            <button class="btn btn-outline-secondary btn-sm float-left">標題</button>
+            <button class="btn btn-outline-secondary btn-sm float-right">編輯</button>
+            <button class="btn btn-outline-secondary btn-sm float-right">隱藏...</button>
+        </div>
+        <div class="d-none d-xl-block">
+        <div id="shortcut">
+            <div> <span class="key">SPACE</span> 旋轉 </div>
+            <div> <span class="key">X</span> 關閉橫幅 </div>
+            <div> <span class="key">S</span> 隱藏選取的項目 </div>
+            <div> <span class="key">R</span> 重設 </div>
+            <div> <span class="key">E</span> 編輯 </div>
+            <div id="fullscreen-shortcut"> <span class="key">F</span> 全螢幕 </div>
+        </div>
+        </div>
+    </div>
+    </div></div>
+<div class="col-12 text-center clearfix"></div>
     </div>
 </div>
 
-<!-- 輪盤主體 -->
-<div class="wheel-container">
-    <div class="pointer"></div>
-    <canvas id="wheelCanvas" width="800" height="800" title="點擊旋轉"></canvas>
-</div>
-
 <script>
-    /* ==========================================
-       【暗箱操作設定區】
-       ========================================== */
-    // 依序必定抽中的數字
-    const riggedSequence = [53, 27, 8]; 
-    let riggedIndex = 0; 
-
-    /* ==========================================
-       輪盤基本設定
-       ========================================== */
-    // 自動生成 1 到 53
-    let items = Array.from({length: 53}, (_, i) => (i + 1).toString());
+(function() {
+    // 1. 設定完整的預定開獎順序 (1~54)
+    const riggedSequence = [
+        "53", "27", "8", "49", "18", "34", "1", "2", "3", "4", "5", "6", "7", "9", "10", 
+        "11", "12", "13", "14", "15", "16", "17", "19", "20", "21", "22", "23", "24", "25", 
+        "26", "28", "29", "30", "31", "32", "33", "35", "36", "37", "38", "39", "40", "41", 
+        "42", "43", "44", "45", "46", "47", "48", "50", "51", "52", "54"
+    ];
+    let rigIndex = 0;
     
-    // 預設粉彩色系
-    const colors = ['#4285F4', '#F47B6B', '#90EE90', '#F5DEB3', '#DDA0DD', '#F5DEB3'];
-
-    const canvas = document.getElementById("wheelCanvas");
-    const ctx = canvas.getContext("2d");
-    const resultPopup = document.getElementById("result-popup");
-    const resultText = document.getElementById("result-text");
-    const hideBtn = document.getElementById("hide-btn");
-    const closeBtn = document.getElementById("close-btn");
-
-    let currentRotation = 0;
+    // 初始化清單 1~54
+    let items = Array.from({length: 54}, (_, i) => ({
+        name: (i + 1).toString(),
+        striked: false
+    }));
+    
     let isSpinning = false;
-    let selectedItem = null;
+    let currentRotation = 0;
+    let currentWinner = null;
+    
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const listContainer = document.getElementById('names-show');
+    const banner = document.getElementById('banner');
+    const bannerText = document.getElementById('banner-text');
+    const hideBtn = document.getElementById('hide-result');
+    const closeBtn = document.getElementById('close-banner');
+    const titleH1 = document.getElementById('main-title');
+    const plsClick = document.getElementById('pls-click');
 
+    // 官方配色陣列
+    const colors = ['#4772ed', '#f46a6a', '#69d98a', '#f9dfa2', '#c895df'];
+
+    // 渲染右側的文字方框
+    function renderList() {
+        listContainer.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.textContent = item.name;
+            if (item.striked) div.classList.add('strike');
+            listContainer.appendChild(div);
+        });
+    }
+
+    // 繪製輪盤
     function drawWheel() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (items.length === 0) return;
+        const activeItems = items.filter(i => !i.striked);
+        const w = canvas.width;
+        const h = canvas.height;
+        const cx = w / 2, cy = h / 2;
+        const r = w / 2 - 2;
+        const numSegments = activeItems.length;
+        
+        ctx.clearRect(0, 0, w, h);
+        if(numSegments === 0) return;
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radius = centerX;
-        const sliceAngle = (2 * Math.PI) / items.length;
+        const anglePerSegment = 2 * Math.PI / numSegments;
 
-        for (let i = 0; i < items.length; i++) {
+        for(let i = 0; i < numSegments; i++) {
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.arc(centerX, centerY, radius, i * sliceAngle, (i + 1) * sliceAngle);
-            ctx.closePath();
-            ctx.fillStyle = colors[i % colors.length];
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, r, i * anglePerSegment, (i + 1) * anglePerSegment);
+            const originalIndex = items.findIndex(item => item.name === activeItems[i].name);
+            ctx.fillStyle = colors[originalIndex % colors.length];
             ctx.fill();
-            
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#999";
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(255,255,255,0.7)";
             ctx.stroke();
 
             ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.rotate(i * sliceAngle + sliceAngle / 2);
+            ctx.translate(cx, cy);
+            ctx.rotate(i * anglePerSegment + anglePerSegment / 2);
             ctx.textAlign = "right";
             ctx.textBaseline = "middle";
-            ctx.fillStyle = "black";
+            ctx.fillStyle = "#000";
             
-            // 畫布內部尺寸放大到 800x800 以保持清晰度，字體等比例設定
-            ctx.font = "18px Arial"; 
-            ctx.fillText(items[i], radius - 20, 0);
+            let fontSize = numSegments > 30 ? 15 : 24;
+            ctx.font = `normal ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif`;
+            ctx.fillText(activeItems[i].name, r - 25, 0);
             ctx.restore();
         }
     }
 
-    drawWheel();
-
-    // 點擊畫布觸發旋轉
-    canvas.addEventListener("click", () => {
-        if (isSpinning || items.length === 0) return;
+    function spinWheel() {
+        const activeItems = items.filter(i => !i.striked);
+        if (isSpinning || activeItems.length === 0) return;
         isSpinning = true;
-        resultPopup.classList.remove("show");
-
-        let targetItem;
         
-        if (riggedIndex < riggedSequence.length && items.includes(riggedSequence[riggedIndex].toString())) {
-            targetItem = riggedSequence[riggedIndex].toString();
-            riggedIndex++;
+        // 恢復正常開獎模式的橫幅狀態與按鈕顯示
+        banner.style.display = 'none';
+        hideBtn.style.display = 'inline-block';
+        
+        document.getElementById('header').classList.remove('show-banner');
+        titleH1.style.display = 'block';
+        plsClick.style.display = 'none';
+
+        let targetName = riggedSequence[rigIndex];
+        let targetIdx = activeItems.findIndex(i => i.name === targetName);
+        
+        if (targetIdx === -1) {
+            targetIdx = Math.floor(Math.random() * activeItems.length);
+            targetName = activeItems[targetIdx].name;
         } else {
-            targetItem = items[Math.floor(Math.random() * items.length)];
-            if (riggedIndex < riggedSequence.length) riggedIndex++; 
+            rigIndex++;
         }
+        
+        currentWinner = items.find(i => i.name === targetName);
 
-        selectedItem = targetItem;
-        const targetIndex = items.indexOf(targetItem);
-        const sliceAngle = 360 / items.length;
+        const anglePerSegment = 360 / activeItems.length;
+        const targetSegmentAngle = targetIdx * anglePerSegment + (anglePerSegment / 2);
+        const currentAngleMod = currentRotation % 360;
+        
+        const rotationAmount = (360 * 10) + (360 - targetSegmentAngle) - currentAngleMod;
+        currentRotation += rotationAmount;
 
-        // 計算讓目標對準右側指針的角度
-        const offsetAngle = targetIndex * sliceAngle + sliceAngle / 2;
-        const stopAngle = 360 - offsetAngle;
-
-        // 預設轉 5 圈
-        const spins = 5 * 360;
-        const finalRotation = currentRotation + spins + stopAngle - (currentRotation % 360);
-
-        canvas.style.transform = `rotate(${finalRotation}deg)`;
-        currentRotation = finalRotation;
+        canvas.style.transition = 'transform 4s cubic-bezier(0.1, 0.7, 0.1, 1)';
+        canvas.style.transform = `rotate(${currentRotation}deg)`;
 
         setTimeout(() => {
             isSpinning = false;
-            showResult(selectedItem);
-        }, 4000);
-    });
-
-    function showResult(item) {
-        resultText.textContent = item;
-        resultPopup.classList.add("show");
+            titleH1.style.display = 'none';
+            bannerText.innerHTML = currentWinner.name;
+            
+            const originalIndex = items.findIndex(item => item.name === currentWinner.name);
+            banner.style.backgroundColor = colors[originalIndex % colors.length];
+            
+            document.getElementById('header').classList.add('show-banner');
+            banner.style.display = 'block';
+        }, 4100);
     }
 
-    closeBtn.addEventListener("click", () => {
-        resultPopup.classList.remove("show");
+    document.querySelectorAll('.spin-btn').forEach(btn => btn.addEventListener('click', spinWheel));
+    document.getElementById('wheel-wrapper').addEventListener('mousedown', spinWheel);
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.keyCode === 32) {
+            e.preventDefault();
+            spinWheel();
+        }
+        if (e.code === 'KeyX' || e.key === 'x' || e.key === 'X') {
+            closeBtn.click();
+        }
+        if (e.code === 'KeyS' || e.key === 's' || e.key === 'S') {
+            hideBtn.click();
+        }
+        if (e.code === 'KeyR' || e.key === 'r' || e.key === 'R') {
+            document.querySelector('.reset-btn').click();
+        }
     });
 
-    hideBtn.addEventListener("click", () => {
-        resultText.textContent = `${selectedItem} 已被隱藏`;
-        
-        setTimeout(() => {
-            items = items.filter(i => i !== selectedItem);
-            resultPopup.classList.remove("show");
-
-            canvas.style.transition = 'none';
-            canvas.style.transform = `rotate(0deg)`;
-            currentRotation = 0;
+    // 處理點擊隱藏按鈕 (只隱藏 S 按鈕，X 原本就在左邊)
+    hideBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentWinner && !currentWinner.striked) {
+            currentWinner.striked = true;
             
+            // 橫幅文字變成 "X 已被隱藏"
+            bannerText.innerHTML = `${currentWinner.name} 已被隱藏`;
+            hideBtn.style.display = 'none';
+            
+            renderList();
             drawWheel();
-
-            setTimeout(() => {
-                canvas.style.transition = 'transform 4s cubic-bezier(0.1, 0.7, 0.1, 1)';
-            }, 50);
-
-        }, 800); 
+        }
     });
+
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        banner.style.display = 'none';
+        document.getElementById('header').classList.remove('show-banner');
+        titleH1.style.display = 'block';
+    });
+
+    document.querySelectorAll('.reset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if(confirm("您確定要重設嗎？")) {
+                items.forEach(item => item.striked = false);
+                renderList();
+                drawWheel();
+                banner.style.display = 'none';
+                document.getElementById('header').classList.remove('show-banner');
+                titleH1.style.display = 'block';
+                plsClick.style.display = 'block';
+            }
+        });
+    });
+
+    renderList();
+    drawWheel();
+})();
 </script>
 </body>
 </html>
